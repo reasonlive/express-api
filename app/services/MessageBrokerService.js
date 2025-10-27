@@ -83,7 +83,7 @@ export default class MessageBrokerService {
                         const content = message.content.toString();
                         if (
                             message.properties.contentType === 'application/json'
-                            || (message.header && message.headers['Content-Type']) === 'application/json'
+                            || message.properties.headers['Content-Type'] === 'application/json'
                         ) {
                             try {
                                 data = JSON.parse(content);
@@ -97,7 +97,7 @@ export default class MessageBrokerService {
                             data = content;
                         }
 
-                        console.log('Received from RabbitMQ: ' + content);
+                        console.log('Received from RabbitMQ: ' + data);
 
                         // Выполняем callback
                         await callback(data);
