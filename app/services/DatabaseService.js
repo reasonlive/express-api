@@ -63,7 +63,8 @@ export default class DatabaseService {
         query = query.slice(0, query.length - 1) + ')';
 
         if (isSingleRow) {
-            marks += '?,'.repeat(values.length).slice(0, values.length) + ')';
+            marks += '?,'.repeat(values.length);
+            marks = marks.slice(0, marks.length - 1) + ')';
         }
         else {
             marks = '';
@@ -83,7 +84,7 @@ export default class DatabaseService {
         const r = await this.#connection
             .execute(`INSERT INTO ${table} ${query} VALUES ${marks}`, isSingleRow ? values : values.flat());
 
-        return r?.insertId ?? 0; // is not single, last inserted id will be returned
+        return r?.insertId ?? 0; // if not single, last inserted id will be returned
     }
 
     /**
