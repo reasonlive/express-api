@@ -26,10 +26,11 @@ export default class DatabaseService {
     /**
      *
      * @param {string} table - table name
+     * @param {number} limit - amount of last records
      * @returns {Promise<array>}
      */
-    async select(table) {
-        const [rows] = await this.#connection.execute(`SELECT * FROM ${table} ORDER BY created_at DESC LIMIT 50`)
+    async select(table, limit = 50) {
+        const [rows] = await this.#connection.execute(`SELECT * FROM ${table} ORDER BY id DESC LIMIT ${limit}`)
         return rows;
     }
 
@@ -67,18 +68,20 @@ export default class DatabaseService {
         else {
             marks = '';
             values.forEach(elem => {
-                if (Array.isArray(elem)) {
-                    elem.forEach(e => {
-                        marks += `(?),`;
-                    })
-                }
+                let tmp = '?,'.repeat(values.length);
+                tmp = `(${tmp.slice(0, tmp.length - 1)})`;
+
+                marks = (tmp + ',').repeat(elem.length);
             })
 
+            const [numbers, dates] = values;
+            values = [];
+            numbers.forEach((num, i) => values.push([parseInt(num), dates[i]]));
             marks = marks.slice(0, marks.length - 1);
         }
 
         const r = await this.#connection
-            .execute(`INSERT INTO ${table} ${query} VALUES ${marks}`, isSingleRow ? values : values[0]);
+            .execute(`INSERT INTO ${table} ${query} VALUES ${marks}`, isSingleRow ? values : values.flat());
 
         return r?.insertId ?? 0; // is not single, last inserted id will be returned
     }

@@ -8,7 +8,7 @@ export default class ApiRouter extends Router {
 
         this.get('/sensors', async (req, res) => {
             try {
-                res.json(await DatabaseService.getInstance().select('sensor_data'));
+                res.json((await DatabaseService.getInstance().select('sensor_data')).reverse());
             } catch (error) {
                 res.status(500).json({ error: error.message });
             }
@@ -26,7 +26,7 @@ export default class ApiRouter extends Router {
 
                 // Send to all via websocket
                 WebsocketService.broadcastToClients('sensorData', {
-                    id: result.insertId,
+                    id,
                     temperature,
                     created_at: new Date()
                 })

@@ -15,39 +15,11 @@ const server = createServer(app);
 
 app.use(cors());
 app.use(express.json());
+
 app.use('/api', new ApiRouter());
 
 WebsocketService.init(server);
 
-(async () => {
-    await DatabaseService.getInstance().initializeTable('sensor_data');
-    await server.listen(process.env.PORT);
-    console.log('server started on port ' + process.env.PORT);
-
-    if (parseInt(process.env.FAKE_DATA_MODE)) {
-       await DataFaker.simulateSensorData();
-    }
-    else {
-        await MessageBrokerService.init();
-
-        await MessageBrokerService.consumeMessages(
-            'sensor_data',
-            async (data) => {
-                // value must be a single integer less or equal than 100 and greater or equal 0
-                if (DataValidator.validateTemperatureData(data)) {
-                    const id = await DatabaseService.getInstance().insert('sensor_data', {temperature: data});
-                    WebsocketService.broadcastToClients('sensorData', {
-                        id,
-                        temperature: data,
-                        created_at: new Date()
-                    });
-                }
-            }
-        );
-    }
-})()
-
-// Обработка необработанных исключений
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
@@ -55,3 +27,59 @@ process.on('unhandledRejection', (reason, promise) => {
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
 });
+
+(async () => {
+    const database = DatabaseService.getInstance();
+    await database.initializeTable('sensor_data');
+
+    await server.listen(process.env.PORT);
+    console.log('server started on port ' + process.env.PORT);
+
+    // if application started for tests without message broker
+    if (parseInt(process.env.FAKE_DATA_MODE)) {
+       await DataFaker.simulateSensorData();
+    }
+    else {
+        await MessageBrokerService.init();
+        // TODO: place this logic to other place
+        await MessageBrokerService.consumeMessages(
+            'sensor_data',
+            async (data) => {
+                // value must be a single integer less or equal than 100 and greater or equal 0
+                if (DataValidator.validateTemperatureData(data)) {
+                    // if broker data is a string of numbers separated by comma
+                    if (typeof data === 'string' && data.split(',').length > 1) {
+                        data = data.split(',');
+                        let seconds = new Date().getSeconds();
+                        const dates = [new Date()];
+
+                        data.forEach((value, i) => {
+                            if (i > 0) {
+                                seconds = seconds + 5;
+                                dates.push(new Date(new Date().setSeconds(seconds)))
+                            }
+                        })
+
+                        await database.insert('sensor_data', {
+                            temperature: data,
+                            created_at: dates
+                        })
+
+                        const result = await database.select('sensor_data', dates.length);
+                        result.reverse().forEach(record => {
+                            WebsocketService.broadcastToClients('sensorData', record);
+                        })
+                    }
+                    else {
+                        const id = await database.insert('sensor_data', {temperature: data});
+                        WebsocketService.broadcastToClients('sensorData', {
+                            id,
+                            temperature: data,
+                            created_at: new Date()
+                        });
+                    }
+                }
+            }
+        );
+    }
+})()
