@@ -77,8 +77,7 @@ export default function SensorDashboard() {
 
             socketRef.current.on('sensorData', (newData: SensorData) => {
                 setSensorData(prev => {
-                    const updated = [...prev, newData];
-                    return updated.slice(-50);
+                    return [...prev, newData];
                 });
                 setError(null);
             });
