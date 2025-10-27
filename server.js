@@ -43,10 +43,6 @@ WebsocketService.init(server);
                     temperature: temperatureData,
                     created_at: new Date()
                 });
-
-                if (DataValidator.validateTemperatureData(data)) {
-
-                }
             }
         );
     }
