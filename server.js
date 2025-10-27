@@ -33,16 +33,15 @@ WebsocketService.init(server);
         await MessageBrokerService.consumeMessages(
             'sensor_data',
             async (data) => {
-                const temperatureData = DataValidator.validateTemperatureData(data)
-                    ? data.temperature
-                    : data
-
-                const id = await DatabaseService.getInstance().insert('sensor_data', {temperature: temperatureData});
-                WebsocketService.broadcastToClients('sensorData', {
-                    id,
-                    temperature: temperatureData,
-                    created_at: new Date()
-                });
+                // value must be a single integer less or equal than 100 and greater or equal 0
+                if (DataValidator.validateTemperatureData(data)) {
+                    const id = await DatabaseService.getInstance().insert('sensor_data', {temperature: data});
+                    WebsocketService.broadcastToClients('sensorData', {
+                        id,
+                        temperature: data,
+                        created_at: new Date()
+                    });
+                }
             }
         );
     }
